@@ -45,15 +45,26 @@ def args_parser():
     parser.add_argument("--batch_size", type=int, default=64, help="input batch size for training")
     parser.add_argument("--epochs", type=int, default=1000, help="number of epochs to train")
     parser.add_argument(
-        "--early_stop", type=int, default=40, help="number of evaluations before early stopping",
+        "--early_stop",
+        type=int,
+        default=40,
+        help="number of evaluations before early stopping",
     )
     parser.add_argument("--hidden_dims", type=int, nargs="+", default=[32], help="hidden layers sizes")
     parser.add_argument(
-        "--mlp_hidden_dims", type=int, nargs="+", default=[], help="hidden MLP layers sizes",
+        "--mlp_hidden_dims",
+        type=int,
+        nargs="+",
+        default=[],
+        help="hidden MLP layers sizes",
     )
 
     parser.add_argument(
-        "--filters_sizes", nargs="+", type=int, default=[6, 6], help="number of nodes in filters",
+        "--filters_sizes",
+        nargs="+",
+        type=int,
+        default=[6, 6],
+        help="number of nodes in filters",
     )
     parser.add_argument("--x_dim", type=int, default=None, help="number of features")
     parser.add_argument("--max_step", type=int, default=1, help="max length of random walks")
@@ -64,7 +75,10 @@ def args_parser():
     parser.add_argument("--seed", type=int, default=0, help="seed for splitting the dataset")
     parser.add_argument("--pass_x", action="store_true", default=False, help="whether to pass x to MLP")
     parser.add_argument(
-        "--remove_features", action="store_true", default=False, help="whether to remove features",
+        "--remove_features",
+        action="store_true",
+        default=False,
+        help="whether to remove features",
     )
     parser.add_argument(
         "--optimizer",
@@ -79,10 +93,17 @@ def args_parser():
         choices=["rw", "dwr", "wl", "rwl", "wloa", "prop", "gl", "py"],
     )
     parser.add_argument(
-        "--gk_layer_type", default="diff", help="Type of GK layer", choices=["non_diff", "diff"],
+        "--gk_layer_type",
+        default="diff",
+        help="Type of GK layer",
+        choices=["non_diff", "diff"],
     )
     parser.add_argument(
-        "--pool_fn", nargs="+", default=["add"], help="Pooling function", choices=["add", "max", "mean"],
+        "--pool_fn",
+        nargs="+",
+        default=["add"],
+        help="Pooling function",
+        choices=["add", "max", "mean"],
     )
     parser.add_argument(
         "--ker_activation",
@@ -96,10 +117,16 @@ def args_parser():
     parser.add_argument("--contr_weight", type=float, default=0, help="Contrastive loss weight")
     parser.add_argument("--fix_mlp", action="store_true", default=False, help="whether to fix MLP")
     parser.add_argument(
-        "--pos_connection", type=float, default=-1.0, help="Positive connection for fixed MLP",
+        "--pos_connection",
+        type=float,
+        default=-1.0,
+        help="Positive connection for fixed MLP",
     )
     parser.add_argument(
-        "--neg_connection", type=float, default=0.5, help="Negative connection for fixed MLP",
+        "--neg_connection",
+        type=float,
+        default=0.5,
+        help="Negative connection for fixed MLP",
     )
     parser.add_argument(
         "--normalize_kernel",
@@ -108,7 +135,10 @@ def args_parser():
         help="whether to normalize non diff kernel outputs",
     )
     parser.add_argument(
-        "--activation", default="relu", help="Activation function for MLP", choices=["relu", "sigmoid"],
+        "--activation",
+        default="relu",
+        help="Activation function for MLP",
+        choices=["relu", "sigmoid"],
     )
     args = parser.parse_args()
     return args
@@ -129,7 +159,9 @@ def get_logger(log_filename):
 def get_optimizer(model, args):
     if args.fix_mlp:
         model.mlp.init_weights(
-            len(args.pool_fn), pos_connection=args.pos_connection, neg_connection=args.neg_connection,
+            len(args.pool_fn),
+            pos_connection=args.pos_connection,
+            neg_connection=args.neg_connection,
         )
     if args.optimizer == "scheduler":
         optimizer = torch.optim.Adam(list(set(model.parameters())), lr=args.lr)
@@ -146,7 +178,11 @@ def get_optimizer(model, args):
         scheduler = None
     elif args.optimizer == "finetune_mlp":
         mlp_params = set(model.mlp.parameters())
-        optimizer = torch.optim.Adam([{"params": list(mlp_params), "lr": args.lr},])
+        optimizer = torch.optim.Adam(
+            [
+                {"params": list(mlp_params), "lr": args.lr},
+            ]
+        )
         scheduler = None
     else:
         raise NotImplementedError(f"Unsupported optimizer {args.optimizer}")
@@ -279,7 +315,11 @@ def main():
     logger.info(args)
     logger.info(model)
 
-    pbar = tqdm(range(1, args.epochs + 1), total=args.epochs, bar_format="{l_bar}{bar:500}{r_bar}{bar:-10b}",)
+    pbar = tqdm(
+        range(1, args.epochs + 1),
+        total=args.epochs,
+        bar_format="{l_bar}{bar:500}{r_bar}{bar:-10b}",
+    )
     loss, acc = Metric(), Metric()
     bast_state_dict = copy.deepcopy(model.state_dict())
     for epoch in pbar:

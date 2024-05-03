@@ -26,7 +26,12 @@ from scipy.cluster.vq import kmeans2
 
 class MLP(nn.Module):
     def __init__(
-        self, in_features, out_features, hidden_dims, dropout_rate=0.5, activation="relu",
+        self,
+        in_features,
+        out_features,
+        hidden_dims,
+        dropout_rate=0.5,
+        activation="relu",
     ):
         super(MLP, self).__init__()
 
@@ -91,11 +96,14 @@ class VectorQuantizerEMA(nn.Module):
     def reset_codebook(self, x):
         if self.codebook_init:
             centroid, label = kmeans2(
-                x.detach().cpu().numpy(), self._embedding.weight.detach().cpu().numpy(), minit="matrix",
+                x.detach().cpu().numpy(),
+                self._embedding.weight.detach().cpu().numpy(),
+                minit="matrix",
             )
         else:
             centroid, label = kmeans2(
-                (x + torch.randn_like(x) * 1e-4).detach().cpu().numpy(), self._num_embeddings,
+                (x + torch.randn_like(x) * 1e-4).detach().cpu().numpy(),
+                self._num_embeddings,
             )
         self._embedding.weight.data = torch.from_numpy(centroid).float().to(x.device)
         self.codebook_init = True
@@ -108,8 +116,8 @@ class VectorQuantizerEMA(nn.Module):
 
         # Calculate distances
         distances = (
-            torch.sum(flat_input ** 2, dim=1, keepdim=True)
-            + torch.sum(self._embedding.weight ** 2, dim=1)
+            torch.sum(flat_input**2, dim=1, keepdim=True)
+            + torch.sum(self._embedding.weight**2, dim=1)
             - 2 * torch.matmul(flat_input, self._embedding.weight.t())
         )
 
@@ -179,7 +187,10 @@ class NonDiffGKernel(nn.Module):
         self.P = nn.Parameter(A, requires_grad=False)
 
         self.X = nn.Parameter(
-            torch.stack([F.one_hot(torch.randint(labels, (nodes,)), labels) for fi in range(filters)], 0,),
+            torch.stack(
+                [F.one_hot(torch.randint(labels, (nodes,)), labels) for fi in range(filters)],
+                0,
+            ),
             requires_grad=False,
         )
 
@@ -236,7 +247,12 @@ class NonDiffGKConv(torch.autograd.Function):
                 egonets += [(x_i, edge_index_i)]
             G1 = lambda i: [
                 set([(e[0], e[1]) for e in egonets[i][1].t().cpu().numpy()]),
-                dict(zip(range(egonets[i][0].shape[0]), egonets[i][0].argmax(-1).cpu().numpy(),)),
+                dict(
+                    zip(
+                        range(egonets[i][0].shape[0]),
+                        egonets[i][0].argmax(-1).cpu().numpy(),
+                    )
+                ),
             ]
             Gs1 = [G1(i) for i in range(adj.shape[0])]
             for g in Gs1:
@@ -356,7 +372,10 @@ class NonDiffGKConv(torch.autograd.Function):
             Pmat = torch.nan_to_num(Pmat)
             Pmat = Pmat / Pmat.sum()
             inds = np.random.choice(
-                Pmat.shape[0] ** 2, size=(n_edits,), replace=False, p=Pmat.flatten().cpu().numpy(),
+                Pmat.shape[0] ** 2,
+                size=(n_edits,),
+                replace=False,
+                p=Pmat.flatten().cpu().numpy(),
             )
             inds = torch.from_numpy(np.stack(np.unravel_index(inds, Pmat.shape), 0)).to(Pmat.device)
 
@@ -374,7 +393,13 @@ class NonDiffGKConv(torch.autograd.Function):
             pi = pi / pi.sum()
             lab_ind = np.random.choice(X[i].shape[0], (n_edits,), p=pi.cpu().numpy())
             lab_val = [
-                np.random.choice(PX.shape[1], size=(1,), replace=False, p=PX[j, :].numpy(),) for j in lab_ind
+                np.random.choice(
+                    PX.shape[1],
+                    size=(1,),
+                    replace=False,
+                    p=PX[j, :].numpy(),
+                )
+                for j in lab_ind
             ]
             lab_ind, lab_val = (
                 torch.from_numpy(lab_ind),
@@ -474,16 +499,34 @@ class DiffGKLayer(nn.Module):
         adj = adj.to_dense()
         x = x[nidx]  # (#G, #Nodes_sub, D_hid)
 
-        return rw_kernel(x, adj, x_hidden, adj_hidden, self.max_step, self.dropout, self.agg_fn,)
+        return rw_kernel(
+            x,
+            adj,
+            x_hidden,
+            adj_hidden,
+            self.max_step,
+            self.dropout,
+            self.agg_fn,
+        )
 
 
 class NonDiffGKLayer(nn.Module):
     def __init__(
-        self, in_features, out_features, filters_size, kernel, normalize=True, vq_features=None,
+        self,
+        in_features,
+        out_features,
+        filters_size,
+        kernel,
+        normalize=True,
+        vq_features=None,
     ):
         super(NonDiffGKLayer, self).__init__()
         self.kernel = NonDiffGKernel(
-            filters_size, in_features, out_features, kernel=kernel, normalize=normalize,
+            filters_size,
+            in_features,
+            out_features,
+            kernel=kernel,
+            normalize=normalize,
         )
         self.in_features = in_features
         self.out_features = out_features
@@ -584,7 +627,13 @@ class GKNetwork(nn.Module):
 
         self.apply_mask = lambda x, mask: x * mask[None, :].repeat(1, x.shape[-1] // mask.shape[-1])
 
-        self.mlp = MLP(mlp_dim * len(self.pool_fn), out_features, mlp_hidden_dims, dropout_rate, activation,)
+        self.mlp = MLP(
+            mlp_dim * len(self.pool_fn),
+            out_features,
+            mlp_hidden_dims,
+            dropout_rate,
+            activation,
+        )
 
         def arange(start, end):
             if isinstance(start, torch.Tensor) and isinstance(end, torch.Tensor):
@@ -602,7 +651,8 @@ class GKNetwork(nn.Module):
             num_filters_per_class = num_filters // out_features
             possible_classes = torch.arange(out_features)
             class_filters = arange(
-                possible_classes * num_filters_per_class, (possible_classes + 1) * num_filters_per_class,
+                possible_classes * num_filters_per_class,
+                (possible_classes + 1) * num_filters_per_class,
             )
             before_filters = arange(0, possible_classes * num_filters_per_class)
             after_filters = arange((possible_classes + 1) * num_filters_per_class, num_filters)
